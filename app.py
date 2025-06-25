@@ -46,10 +46,6 @@ def rot13(text):
 app = Flask(__name__)
 
 # --- ROUTES ---
-@app.route("/", methods=["GET"])
-def index():
-    return render_template("index.html")
-
 @app.route("/admin", methods=["GET"])
 def admin():
     conn = sqlite3.connect(DB_PATH)
