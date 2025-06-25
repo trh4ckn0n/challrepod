@@ -1,16 +1,12 @@
-from flask import Flask, request, jsonify, render_template, abort, send_file
+from flask import Flask, request, jsonify, render_template, abort
 from datetime import datetime
 import logging
 import base64
 import os
 import sqlite3
-import csv
-import io
 
 DB_PATH = "beacons.db"
 FLAG = "FLAG{dns_trafic_detected_correctly}"
-
-app = Flask(__name__)
 
 # --- INIT DB ---
 def init_db():
@@ -46,41 +42,38 @@ def rot13(text):
         'ABCDEFGHIJKLMabcdefghijklmNOPQRSTUVWXYZnopqrstuvwxyz',
         'NOPQRSTUVWXYZnopqrstuvwxyzABCDEFGHIJKLMabcdefghijklm'))
 
-# --- ROUTES ---
+app = Flask(__name__)
 
+# --- ROUTES ---
 @app.route("/")
 def index():
-    return render_template_string("""
-    <html><head><title>Access Denied</title>
-    <style>body{background:#000;color:#0f0;font-family:monospace;text-align:center;margin-top:20vh;}</style>
-    </head><body>
-    <h1>403 - Forbidden</h1>
-    <p>You are not supposed to be here.</p>
-    <p>System monitored by <span style="color:#f0f">trhacknon</span>.</p>
-    </body></html>
-    """)
+    return render_template("index.html")
 
 @app.route("/admin", methods=["GET"])
-def fake_admin():
-    abort(403)
+def admin():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT ip, user, timestamp FROM beacons ORDER BY timestamp DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    return render_template("admin.html", beacons=rows)
 
-@app.route("/backup.zip", methods=["GET"])
-def fake_backup():
-    return "This file is encrypted. 🔒", 401
+@app.route("/beacons", methods=["GET"])
+def view_beacons():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT ip, user, timestamp FROM beacons ORDER BY timestamp DESC")
+    beacons = cursor.fetchall()
+    conn.close()
+    return render_template("beacons.html", beacons=beacons)
 
-@app.route("/flag", methods=["GET"])
-def get_flag():
-    encoded_flag = base64.b64encode(rot13(xor_encode(FLAG)).encode()).decode()
-    return jsonify({"encoded": encoded_flag, "hint": "base64 -> xor -> rot13"})
+@app.route("/trap.js")
+def trap():
+    return app.send_static_file("trap.js")
 
-@app.route("/validate", methods=["POST"])
-def validate():
-    data = request.get_json()
-    candidate = data.get("flag", "")
-    decoded = xor_encode(rot13(candidate))
-    if decoded == FLAG:
-        return jsonify({"result": "✅ Correct!"})
-    return jsonify({"result": "❌ Incorrect."})
+@app.route("/redir")
+def redir():
+    return render_template("redir.html")
 
 @app.route("/ping", methods=["POST"])
 def ping():
@@ -98,54 +91,28 @@ def ping():
     logging.info(f"[+] Beacon reçu de {ip} : {data}")
     return jsonify({"status": "received"}), 200
 
-@app.route("/trap.js")
-def trap_js():
-    return app.send_static_file("trap.js")
+@app.route("/flag", methods=["GET"])
+def get_flag():
+    encoded_flag = base64.b64encode(rot13(xor_encode(FLAG)).encode()).decode()
+    return jsonify({"encoded": encoded_flag, "hint": "base64 -> xor -> rot13"})
 
-@app.route("/redir")
-def redir():
-    return render_template("redir.html")  # page qui redirige vers /ping
+@app.route("/validate", methods=["POST"])
+def validate():
+    data = request.get_json()
+    candidate = data.get("flag", "")
+    decoded = xor_encode(rot13(candidate))
+    if decoded == FLAG:
+        return jsonify({"result": "✅ Correct!"})
+    return jsonify({"result": "❌ Incorrect."})
 
-@app.route("/beacons", methods=["GET"])
-def view_beacons():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, ip, user, timestamp FROM beacons ORDER BY timestamp DESC")
-    beacons = cursor.fetchall()
-    conn.close()
-    return render_template("beacons.html", beacons=beacons)
+@app.route("/backup.zip", methods=["GET"])
+def fake_backup():
+    return "This file is encrypted. 🔒", 401
 
-@app.route("/beacons/export", methods=["GET"])
-def export_beacons():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT ip, user, timestamp FROM beacons ORDER BY timestamp DESC")
-    beacons = cursor.fetchall()
-    conn.close()
+@app.route("/admin_fake", methods=["GET"])
+def fake_admin():
+    abort(403)
 
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["IP", "User", "Timestamp"])
-    writer.writerows(beacons)
-    output.seek(0)
-
-    return send_file(
-        io.BytesIO(output.getvalue().encode()),
-        mimetype='text/csv',
-        download_name='beacons.csv',
-        as_attachment=True
-    )
-
-@app.route("/beacons/reset", methods=["POST"])
-def reset_beacons():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM beacons")
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "success", "message": "Database reset successful."})
-
-# --- ERREURS ---
 @app.errorhandler(403)
 def forbidden(e):
     return "<h1>403 - Access Denied</h1>", 403
