@@ -63,8 +63,8 @@ def admin():
 
 @app.route("/trap.js")
 def trap():
-    return render_template("trap.js")  # fichier camouflé
-
+    return app.send_static_file("trap.js")
+    
 @app.route("/redir")
 def redir():
     return render_template("redir.html")  # redirection vers ping (piège)
