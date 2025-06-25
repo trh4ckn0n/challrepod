@@ -27,14 +27,22 @@
             <tr><th>ID</th><th>IP</th><th>User</th><th>Timestamp</th></tr>
         </thead>
         <tbody>
-            {% for id, ip, user, timestamp in beacons %}
-            <tr>
-                <td>{{ id }}</td>
-                <td>{{ ip }}</td>
-                <td>{{ user }}</td>
-                <td>{{ timestamp }}</td>
-            </tr>
-            {% endfor %}
+<table>
+  <tr>
+    <th>#</th>
+    <th>IP</th>
+    <th>Utilisateur</th>
+    <th>Timestamp</th>
+  </tr>
+  {% for ip, user, timestamp in beacons %}
+  <tr>
+    <td>{{ loop.index }}</td>
+    <td>{{ ip }}</td>
+    <td>{{ user }}</td>
+    <td>{{ timestamp }}</td>
+  </tr>
+  {% endfor %}
+</table>
         </tbody>
     </table>
 
