@@ -1,36 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Beacon Monitor - Admin</title>
-  <style>
-    body {
-      background: #000;
-      color: #0f0;
-      font-family: monospace;
-      padding: 2rem;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 2rem;
-    }
-    th, td {
-      border: 1px solid #0f0;
-      padding: 8px;
-      text-align: left;
-    }
-    th { background-color: #111; }
-    h1 { color: #f0f; }
-  </style>
+    <meta charset="UTF-8" />
+    <title>Admin Panel - Beacons</title>
+    <style>
+        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #0f0; padding: 8px; text-align: left; }
+        th { background: #020; }
+        h1 { color: #0f0; }
+    </style>
 </head>
 <body>
-  <h1>💻 Beacon Logs - trhacknon</h1>
-  <table>
-    <tr><th>IP</th><th>User</th><th>Timestamp</th></tr>
-    {% for ip, user, timestamp in beacons %}
-    <tr><td>{{ ip }}</td><td>{{ user }}</td><td>{{ timestamp }}</td></tr>
-    {% endfor %}
-  </table>
+    <h1>Admin Panel - Beacons</h1>
+    <table>
+        <thead>
+            <tr><th>IP</th><th>User</th><th>Timestamp</th></tr>
+        </thead>
+        <tbody>
+            {% for ip, user, timestamp in beacons %}
+            <tr>
+                <td>{{ ip }}</td>
+                <td>{{ user }}</td>
+                <td>{{ timestamp }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3">No beacons logged yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </body>
 </html>
