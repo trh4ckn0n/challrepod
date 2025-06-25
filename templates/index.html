@@ -2,42 +2,22 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Connexion Système</title>
+  <title>Access Denied</title>
   <style>
     body {
       background: #000;
       color: #0f0;
       font-family: monospace;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
+      text-align: center;
+      margin-top: 20vh;
     }
-    h1 {
-      font-size: 2rem;
-      color: #f0f;
-    }
-    #status {
-      margin-top: 20px;
-    }
+    h1 { color: #f00; }
+    span { color: #f0f; }
   </style>
 </head>
 <body>
-  <h1>Connexion à la console distante...</h1>
-  <div id="status">⏳ En attente...</div>
-
-  <script>
-    const beaconUrl = atob("aHR0cHM6Ly9jaGFsbHJlcG9kLm9ucmVuZGVyLmNvbS9waW5n");
-    fetch(beaconUrl, {
-      method: "POST",
-      body: JSON.stringify({ user: "anonymous", time: Date.now() }),
-      headers: { "Content-Type": "application/json" }
-    }).then(() => {
-      document.getElementById("status").textContent = "✅ Connexion établie.";
-    }).catch(() => {
-      document.getElementById("status").textContent = "❌ Erreur de connexion.";
-    });
-  </script>
+  <h1>403 - Forbidden</h1>
+  <p>You are not supposed to be here.</p>
+  <p>System monitored by <span>trhacknon</span>.</p>
 </body>
 </html>
