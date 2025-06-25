@@ -119,6 +119,15 @@ def validate():
         return jsonify({"result": "✅ Correct!"})
     return jsonify({"result": "❌ Incorrect."})
 
+@app.route("/beacons", methods=["GET"])
+def view_beacons():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT ip, user, timestamp FROM beacons ORDER BY timestamp DESC")
+    beacons = cursor.fetchall()
+    conn.close()
+    return render_template("beacons.html", beacons=beacons)
+
 @app.errorhandler(403)
 def forbidden(e):
     return "<h1>403 - Access Denied</h1>", 403
