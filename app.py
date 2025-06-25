@@ -1,13 +1,16 @@
-from flask import Flask, request, jsonify, render_template_string, abort, render_template
+from flask import Flask, request, jsonify, render_template, abort, send_file
 from datetime import datetime
 import logging
 import base64
 import os
 import sqlite3
-
+import csv
+import io
 
 DB_PATH = "beacons.db"
 FLAG = "FLAG{dns_trafic_detected_correctly}"
+
+app = Flask(__name__)
 
 # --- INIT DB ---
 def init_db():
@@ -43,43 +46,9 @@ def rot13(text):
         'ABCDEFGHIJKLMabcdefghijklmNOPQRSTUVWXYZnopqrstuvwxyz',
         'NOPQRSTUVWXYZnopqrstuvwxyzABCDEFGHIJKLMabcdefghijklm'))
 
-app = Flask(__name__)
-
 # --- ROUTES ---
-@app.route("/admin", methods=["GET"])
-def admin():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT ip, user, timestamp FROM beacons ORDER BY timestamp DESC")
-    rows = cursor.fetchall()
-    conn.close()
-    return render_template("admin.html", beacons=rows)
 
-@app.route("/trap.js")
-def trap():
-    return app.send_static_file("trap.js")
-    
-@app.route("/redir")
-def redir():
-    return render_template("redir.html")  # redirection vers ping (piège)
-
-@app.route("/ping", methods=["POST"])
-def ping():
-    data = request.get_json()
-    ip = request.remote_addr
-    user = data.get("user", "anonymous")
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO beacons (ip, user, timestamp) VALUES (?, ?, ?)", (ip, user, timestamp))
-    conn.commit()
-    conn.close()
-
-    logging.info(f"[+] Beacon reçu de {ip} : {data}")
-    return jsonify({"status": "received"}), 200
-
-@app.route("/", methods=["GET"])
+@app.route("/")
 def index():
     return render_template_string("""
     <html><head><title>Access Denied</title>
@@ -113,15 +82,70 @@ def validate():
         return jsonify({"result": "✅ Correct!"})
     return jsonify({"result": "❌ Incorrect."})
 
+@app.route("/ping", methods=["POST"])
+def ping():
+    data = request.get_json()
+    ip = request.remote_addr
+    user = data.get("user", "anonymous")
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO beacons (ip, user, timestamp) VALUES (?, ?, ?)", (ip, user, timestamp))
+    conn.commit()
+    conn.close()
+
+    logging.info(f"[+] Beacon reçu de {ip} : {data}")
+    return jsonify({"status": "received"}), 200
+
+@app.route("/trap.js")
+def trap_js():
+    return app.send_static_file("trap.js")
+
+@app.route("/redir")
+def redir():
+    return render_template("redir.html")  # page qui redirige vers /ping
+
 @app.route("/beacons", methods=["GET"])
 def view_beacons():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, ip, user, timestamp FROM beacons ORDER BY timestamp DESC")
+    beacons = cursor.fetchall()
+    conn.close()
+    return render_template("beacons.html", beacons=beacons)
+
+@app.route("/beacons/export", methods=["GET"])
+def export_beacons():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT ip, user, timestamp FROM beacons ORDER BY timestamp DESC")
     beacons = cursor.fetchall()
     conn.close()
-    return render_template("beacons.html", beacons=beacons)
 
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["IP", "User", "Timestamp"])
+    writer.writerows(beacons)
+    output.seek(0)
+
+    return send_file(
+        io.BytesIO(output.getvalue().encode()),
+        mimetype='text/csv',
+        download_name='beacons.csv',
+        as_attachment=True
+    )
+
+@app.route("/beacons/reset", methods=["POST"])
+def reset_beacons():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM beacons")
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "success", "message": "Database reset successful."})
+
+# --- ERREURS ---
 @app.errorhandler(403)
 def forbidden(e):
     return "<h1>403 - Access Denied</h1>", 403
