@@ -49,8 +49,14 @@ app = Flask(__name__)
 def index():
     return render_template("index.html")
 
+from flask import request
+
+ADMIN_PASSWORD = "trhackadmin"
+
 @app.route("/admin", methods=["GET"])
 def admin():
+    if request.args.get("auth") != ADMIN_PASSWORD:
+        abort(403)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT ip, user, timestamp FROM beacons ORDER BY timestamp DESC")
@@ -112,6 +118,14 @@ def fake_backup():
 @app.route("/admin_fake", methods=["GET"])
 def fake_admin():
     abort(403)
+
+@app.route("/logs")
+def view_logs():
+    with open("beacons.log", "r") as f:
+        content = f.read()
+    return f"<pre style='background:black;color:lime;padding:1em;font-family:monospace'>{content}</pre>"
+
+
 
 @app.errorhandler(403)
 def forbidden(e):
