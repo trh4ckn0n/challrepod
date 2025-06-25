@@ -1,55 +1,38 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>trhacknon :: Beacons Monitor</title>
+    <meta charset="UTF-8" />
+    <title>🛰️ Beacon Log</title>
     <style>
-        body {
-            background: #000;
-            color: #0f0;
-            font-family: monospace;
-            padding: 20px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            border: 1px solid #0f0;
-            padding: 8px;
-            text-align: left;
-        }
-        input {
-            background: #111;
-            border: 1px solid #0f0;
-            color: #0f0;
-            padding: 5px;
-            width: 100%;
-        }
+        body { background:#000; color:#0f0; font-family: monospace; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px;}
+        th, td { border: 1px solid #0f0; padding: 6px; text-align: left; }
+        th { background-color: #060; }
+        button { background: #0f0; border: none; padding: 8px; cursor: pointer; font-weight: bold; color: #000; }
+        button.reset { background: #f00; color: #fff; margin-left: 10px; }
+        input { margin-top: 10px; padding: 6px; width: 100%; font-size: 1em; }
     </style>
 </head>
 <body>
     <h1>🛰️ Beacon Log</h1>
     <p>Surveillance by <span style="color:#f0f">trhacknon</span></p>
-    <input type="text" id="search" placeholder="🔍 Rechercher IP ou utilisateur..." onkeyup="filterTable()">
+
+    <button onclick="window.location.href='/beacons/export'">📥 Export CSV</button>
+    <button class="reset" onclick="resetDB()">🗑️ Reset DB</button>
+
+    <input type="text" id="search" placeholder="🔍 Rechercher IP ou utilisateur..." onkeyup="filterTable()" />
 
     <table id="beaconTable">
         <thead>
-            <tr>
-                <th>#</th>
-                <th>IP</th>
-                <th>User</th>
-                <th>Timestamp</th>
-            </tr>
+            <tr><th>ID</th><th>IP</th><th>User</th><th>Timestamp</th></tr>
         </thead>
         <tbody>
-            {% for beacon in beacons %}
+            {% for id, ip, user, timestamp in beacons %}
             <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ beacon[0] }}</td>
-                <td>{{ beacon[1] }}</td>
-                <td>{{ beacon[2] }}</td>
+                <td>{{ id }}</td>
+                <td>{{ ip }}</td>
+                <td>{{ user }}</td>
+                <td>{{ timestamp }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -66,6 +49,17 @@
                 const user = row.cells[2].innerText.toLowerCase();
                 row.style.display = (ip.includes(filter) || user.includes(filter)) ? "" : "none";
             });
+        }
+
+        function resetDB() {
+            if (!confirm("⚠️ Êtes-vous sûr de vouloir supprimer toutes les données ?")) return;
+            fetch('/beacons/reset', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message);
+                    location.reload();
+                })
+                .catch(() => alert("Erreur lors de la réinitialisation."));
         }
     </script>
 </body>
