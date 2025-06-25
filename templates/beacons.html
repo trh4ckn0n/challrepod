@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>trhacknon :: Beacons Monitor</title>
+    <style>
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #0f0;
+            padding: 8px;
+            text-align: left;
+        }
+        input {
+            background: #111;
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 5px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>🛰️ Beacon Log</h1>
+    <p>Surveillance by <span style="color:#f0f">trhacknon</span></p>
+    <input type="text" id="search" placeholder="🔍 Rechercher IP ou utilisateur..." onkeyup="filterTable()">
+
+    <table id="beaconTable">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>IP</th>
+                <th>User</th>
+                <th>Timestamp</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for beacon in beacons %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ beacon[0] }}</td>
+                <td>{{ beacon[1] }}</td>
+                <td>{{ beacon[2] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        function filterTable() {
+            const input = document.getElementById("search");
+            const filter = input.value.toLowerCase();
+            const rows = document.querySelectorAll("#beaconTable tbody tr");
+
+            rows.forEach(row => {
+                const ip = row.cells[1].innerText.toLowerCase();
+                const user = row.cells[2].innerText.toLowerCase();
+                row.style.display = (ip.includes(filter) || user.includes(filter)) ? "" : "none";
+            });
+        }
+    </script>
+</body>
+</html>
