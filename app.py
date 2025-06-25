@@ -26,8 +26,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-init_db()
-
 # --- LOGGER ---
 logging.basicConfig(
     filename='beacons.log',
