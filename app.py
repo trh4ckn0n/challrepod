@@ -72,6 +72,11 @@ def view_beacons():
     conn.close()
     return render_template("beacons.html", beacons=beacons)
 
+@app.route("/static/hidden.js")
+def trap():
+    return app.send_static_file("/static/hidden.js")
+
+
 @app.route("/trap.js")
 def trap():
     return app.send_static_file("trap.js")
