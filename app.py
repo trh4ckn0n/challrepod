@@ -1,12 +1,33 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template_string, abort
 from datetime import datetime
 import logging
 import base64
 import os
+import sqlite3
 
 app = Flask(__name__)
 
-# Logger dans un fichier
+DB_PATH = "beacons.db"
+FLAG = "FLAG{dns_trafic_detected_correctly}"
+
+# --- INIT DB ---
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS beacons (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip TEXT,
+            user TEXT,
+            timestamp TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# --- LOGGER ---
 logging.basicConfig(
     filename='beacons.log',
     level=logging.INFO,
@@ -14,67 +35,69 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-# Flag stocké côté serveur (non visible directement)
-FLAG = "FLAG{dns_trafic_detected_correctly}"
+# --- UTILS ---
+def xor_encode(text, key='X'):
+    return ''.join(chr(ord(c) ^ ord(key)) for c in text)
 
+def rot13(text):
+    return text.translate(str.maketrans(
+        'ABCDEFGHIJKLMabcdefghijklmNOPQRSTUVWXYZnopqrstuvwxyz',
+        'NOPQRSTUVWXYZnopqrstuvwxyzABCDEFGHIJKLMabcdefghijklm'))
+
+# --- ROUTES ---
 @app.route("/ping", methods=["POST"])
 def ping():
     data = request.get_json()
     ip = request.remote_addr
+    user = data.get("user", "anonymous")
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    # Log en fichier
-    logging.info(f"Beacon de {ip} : {data}")
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO beacons (ip, user, timestamp) VALUES (?, ?, ?)", (ip, user, timestamp))
+    conn.commit()
+    conn.close()
 
+    logging.info(f"[+] Beacon reçu de {ip} : {data}")
     return jsonify({"status": "received"}), 200
-
 
 @app.route("/", methods=["GET"])
 def index():
-    # Page HTML mystérieuse
     return render_template_string("""
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <title>Nothing to see here</title>
-          <style>
-            body {
-              background-color: #0a0a0a;
-              color: #333;
-              font-family: monospace;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              height: 100vh;
-              flex-direction: column;
-            }
-            .hidden {
-              color: #0a0a0a;
-              user-select: none;
-            }
-            .glow {
-              text-shadow: 0 0 5px #00ffcc;
-            }
-          </style>
-        </head>
-        <body>
-          <h1 class="glow">403 :: Forbidden</h1>
-          <p>This endpoint is restricted.</p>
-          <div class="hidden"> <!-- Flag encodé base64 dans le DOM -->
-            {{ hidden_flag }}
-          </div>
-        </body>
-        </html>
-    """, hidden_flag=base64.b64encode(FLAG.encode()).decode())
+    <html><head><title>Access Denied</title>
+    <style>body{background:#000;color:#0f0;font-family:monospace;text-align:center;margin-top:20vh;}</style>
+    </head><body>
+    <h1>403 - Forbidden</h1>
+    <p>You are not supposed to be here.</p>
+    <p>System monitored by <span style="color:#f0f">trhacknon</span>.</p>
+    </body></html>
+    """)
+
+@app.route("/admin", methods=["GET"])
+def fake_admin():
+    abort(403)
+
+@app.route("/backup.zip", methods=["GET"])
+def fake_backup():
+    return "This file is encrypted. 🔒", 401
 
 @app.route("/flag", methods=["GET"])
-def reveal_flag():
-    # Expose clairement le flag, mais route inconnue du frontend
-    return jsonify({
-        "flag": FLAG,
-        "hint": "you were not supposed to find this endpoint easily..."
-    }), 200
+def get_flag():
+    encoded_flag = base64.b64encode(rot13(xor_encode(FLAG)).encode()).decode()
+    return jsonify({"encoded": encoded_flag, "hint": "base64 -> xor -> rot13"})
 
+@app.route("/validate", methods=["POST"])
+def validate():
+    data = request.get_json()
+    candidate = data.get("flag", "")
+    decoded = xor_encode(rot13(candidate))
+    if decoded == FLAG:
+        return jsonify({"result": "✅ Correct!"})
+    return jsonify({"result": "❌ Incorrect."})
+
+@app.errorhandler(403)
+def forbidden(e):
+    return "<h1>403 - Access Denied</h1>", 403
 
 @app.errorhandler(404)
 def not_found(e):
