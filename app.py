@@ -4,6 +4,9 @@ import logging
 import base64
 import os
 import sqlite3
+from flask_cors import CORS
+app = Flask(__name__)
+CORS(app)
 
 DB_PATH = "beacons.db"
 FLAG = "FLAG{dns_trafic_detected_correctly}"
@@ -41,8 +44,6 @@ def rot13(text):
     return text.translate(str.maketrans(
         'ABCDEFGHIJKLMabcdefghijklmNOPQRSTUVWXYZnopqrstuvwxyz',
         'NOPQRSTUVWXYZnopqrstuvwxyzABCDEFGHIJKLMabcdefghijklm'))
-
-app = Flask(__name__)
 
 # --- ROUTES ---
 @app.route("/")
@@ -83,20 +84,23 @@ def redir():
 
 @app.route("/ping", methods=["POST"])
 def ping():
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr)
     data = request.get_json()
-    ip = request.remote_addr
-    user = data.get("user", "anonymous")
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
+    user = data.get("user", "unknown")
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    
     conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO beacons (ip, user, timestamp) VALUES (?, ?, ?)", (ip, user, timestamp))
+    conn.execute("INSERT INTO beacons (ip, user, timestamp) VALUES (?, ?, ?)", (ip, user, timestamp))
     conn.commit()
     conn.close()
 
-    logging.info(f"[+] Beacon reçu de {ip} : {data}")
-    return jsonify({"status": "received"}), 200
+    log_message = f"[{timestamp}] Beacon reçu de {ip} (user: {user})"
+    print(log_message)
+    with open("beacons.log", "a") as f:
+        f.write(log_message + "\n")
 
+    return jsonify({"status": "ok"})
+    
 @app.route("/flag", methods=["GET"])
 def get_flag():
     encoded_flag = base64.b64encode(rot13(xor_encode(FLAG)).encode()).decode()
@@ -136,5 +140,6 @@ def not_found(e):
     return "404 Not Found", 404
 
 if __name__ == "__main__":
+    init_db()
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host="0.0.0.0", port=port)
