@@ -5,10 +5,6 @@ import base64
 import os
 import sqlite3
 
-@app.route("/", methods=["GET"])
-def index():
-    return render_template("index.html")
-app = Flask(__name__)
 
 DB_PATH = "beacons.db"
 FLAG = "FLAG{dns_trafic_detected_correctly}"
@@ -46,6 +42,8 @@ def rot13(text):
     return text.translate(str.maketrans(
         'ABCDEFGHIJKLMabcdefghijklmNOPQRSTUVWXYZnopqrstuvwxyz',
         'NOPQRSTUVWXYZnopqrstuvwxyzABCDEFGHIJKLMabcdefghijklm'))
+
+app = Flask(__name__)
 
 # --- ROUTES ---
 @app.route("/", methods=["GET"])
